@@ -1,37 +1,112 @@
-// Definieer de pinnen voor de LED's
-const int ledPin1 = 13;
-const int ledPin2 = 12;
-const int extraPin = 11; // Kies een andere vrije pin voor het extra apparaat
+#include "arduino_secrets.h"
 
-int een = 0;
+const int servoPin = 9;  // Het pinnummer waarop de servo is aangesloten
+const int trigPin = 10;
+const int echoPin = 11;
+
+float duration, distance;  
 
 void setup() {
-  // Definieer de pinnen als output
-  pinMode(ledPin1, OUTPUT);
-  pinMode(ledPin2, OUTPUT);
-  pinMode(extraPin, OUTPUT);
+    Serial.begin(9600);
+  while (!Serial);
+  
+  Serial.print("Attempting to connect to WPA SSID: ");
+  Serial.println(ssid);
+  while (WiFi.begin(ssid, pass) != WL_CONNECTED) {
+    Serial.print(".");
+    delay(5000);
+  }
 
-  Serial.begin(9600);
+  Serial.println("Succesvol verbonden met");
+  Serial.println();
+  Serial.println(WiFi.localIP());
+  Serial.println();
+
+  Serial.print("Attempting to connect to the MQTT broker: ");
+  Serial.println(broker);
+
+  if (!mqttClient.connect(broker, port)) {
+    Serial.print("MQTT connection failed! Error code = ");
+    Serial.println(mqttClient.connectError());
+    while (1);
+  }
+
+  Serial.println("You're connected to the MQTT broker!");
+  Serial.println();
+
+
+  Serial.begin(9600); // Initialiseren van de seriële communicatie met een baudrate van 9600
+  pinMode(servoPin, OUTPUT);  // Zet servoPin als uitgang
+  digitalWrite(servoPin, HIGH);  // Zet pin 9 in eerste instantie aan (stuurt het signaal naar de servo)
+
+  	pinMode(trigPin, OUTPUT);  
+	pinMode(echoPin, INPUT);  
+	Serial.begin(9600);  
+
 }
 
 void loop() {
-  // Maak de eerste LED hoog (aan) en de tweede LED laag (uit)
-  digitalWrite(ledPin1, HIGH);
-  delay(250);  // Wacht 1 seconde
+  
+    mqttClient.poll();
+  unsigned long currentMillis = millis();
 
-    digitalWrite(ledPin2, HIGH);
-  digitalWrite(extraPin, HIGH); // Zet het extra aangesloten apparaat aan
-    delay(200);  // Wacht 1 seconde
+  if (currentMillis - previousMillis >= interval) {
+    previousMillis = currentMillis;
 
-  // Maak de eerste LED laag (uit) en de tweede LED hoog (aan)
-  digitalWrite(ledPin1, LOW); 
-  delay(250);
+    // Send message to topicEmpty
+    mqttClient.beginMessage(topicEmpty);
+    mqttClient.print("false ");
+    mqttClient.print(count);
+    mqttClient.endMessage();
 
-  digitalWrite(ledPin2, LOW);
-  digitalWrite(extraPin, LOW); // Zet het extra aangesloten apparaat uit
-  delay(200);  // Wacht 1 seconde
+    // Send message to other topics with appropriate values
+    mqttClient.beginMessage(topic);
+    mqttClient.print(count);
+    mqttClient.endMessage();
 
-  Serial.print("Hello ");
-  Serial.println(een++);
-  Serial.println("it works :)");
+    mqttClient.beginMessage(topicLastTime);
+    mqttClient.print(count);
+    mqttClient.endMessage();
+
+    mqttClient.beginMessage(topicCapacity);
+    mqttClient.print("capacity_data_here");
+    mqttClient.endMessage();
+
+    Serial.println(count);
+    count++;
+  }
+
+
+  digitalWrite(trigPin, LOW);  
+	delayMicroseconds(2);  
+	digitalWrite(trigPin, HIGH);  
+	delayMicroseconds(10);  
+	digitalWrite(trigPin, LOW);  
+
+  duration = pulseIn(echoPin, HIGH);  
+
+  distance = (duration*.0343)/2;  
+
+	Serial.print("Distance: ");  
+	Serial.println(distance);  
+	delay(500);  
+
+
+  // Kijk of er gegevens beschikbaar zijn om te lezen
+  if (Serial.available() > 0) {
+    // Lees de invoer en geef deze weer
+    String input = Serial.readStringUntil('\n'); // Lees de volledige regel tot aan het newline-teken
+
+    // Controleer of de ingevoerde tekst "stop" is
+    if (input.equals("stop")) {
+      digitalWrite(servoPin, LOW);
+      Serial.println("Programma gestopt.");
+    }
+
+    if (input.equals("play")) {
+      digitalWrite(servoPin, HIGH);
+      Serial.println("Programma gestart");
+    }
+  }
 }
+
