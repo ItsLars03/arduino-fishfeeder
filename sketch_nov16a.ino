@@ -212,6 +212,15 @@ void loop() {
     delay(150); // Wacht 250 ms (1/4 van een seconde) terwijl de LED is uitgeschakeld
   }
 
+  // MQTT-CLIENT
+  // Send message to topicEmpty
+    mqttClient.beginMessage(topicEmpty);
+    if (isEmpty){
+      mqttClient.print("LEEG");
+    } else{
+      mqttClient.print("VOL");
+    }
+    mqttClient.endMessage();
 
 
 
