@@ -239,6 +239,39 @@ void loop() {
   // Zet in de console hoeveel cm voer er nog in zit.
 	Serial.print("[Distance] ");  
 	Serial.println(distance);  
+
+  // Lees de staat van de knop
+  int buttonState = digitalRead(feederButton);
+
+  // Check of de bak niet leeg, wanneer dit het geval is, zat de code niet werken
+  if(!isEmpty){
+    // Check of de button inderdrukt is
+    if (buttonState == LOW) {
+      if (!myServo.attached()) {
+        myServo.attach(9);
+      }
+    myServo.write(90);  // Move the servo to the 90-degree position
+    // delay(1000);        // Wait for a second
+    myServo.write(0);   // Move the servo to the 0-degree position
+    // delay(1000);        // Wait for a second
+    Serial.println("[Button] De knop is ingedrukt!");
+    // Add your own code here to be executed when the button is pressed
+
+    // Zet de feedButton op true zodat het ifstatement hieronder werkt
+    feedButton = true;
+    }
+  }
+  
+  // Check of de button losgelaten is en of de feedButton bool true is
+  if (buttonState == HIGH && feedButton) {
+    // Zet de moter uit
+    myServo.detach();
+    // Zet in de console dat de moter uit is
+    Serial.println("[Button] De knop is losgelaten!");
+
+    // Zet de feedButton weer op false
+    feedButton = false;
+  }
   
   // Als de afstand groter is dan 9 zal de klep open staan
   if (distance > 9) {
@@ -270,6 +303,44 @@ void loop() {
     isEmpty = false;
   }
 
+  if (activated){
+    if (!isEmpty){
+      if (!myServo.attached()) {
+        myServo.attach(9);
+      }
+    // Zet in de console dat de moter is gestart
+    Serial.println("[MQTT] Moter gestart");
+
+    mqttClient.beginMessage(topicMessage);
+    mqttClient.print("[MQTT] Moter gestart");
+    mqttClient.endMessage();
+
+    // Start de moter
+    myServo.write(90);  // Move the servo to the 90-degree position
+    myServo.write(0);   // Move the servo to the 0-degree position
+    } else {
+      Serial.println("[MQTT] Kon de moter niet starten omdat de bak leeg is");
+
+      mqttClient.beginMessage(topicMessage);
+      mqttClient.print("[MQTT] Kon de moter niet starten omdat de bak leeg is");
+      mqttClient.endMessage();
+    }
+         // Laat de motor draaien voor het ingestelde seconden
+        delay(feedingDuration * 1000);
+        myServo.detach();
+
+        // Zet de moter weer uit 
+    Serial.println("[MQTT] Moter gestopt");
+
+    mqttClient.beginMessage(topicMessage);
+    mqttClient.print("[MQTT] Moter gestopt");
+    mqttClient.endMessage();
+
+    mqttClient.beginMessage(topicStart);
+    mqttClient.print("false");
+    mqttClient.endMessage();
+    activated = false;
+  }
 }
 
 // Callbackfunctie voor topic
