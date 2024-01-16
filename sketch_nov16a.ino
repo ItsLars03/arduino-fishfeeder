@@ -115,8 +115,6 @@ void setup() {
   mqttClient.subscribe(topicStart);
 }
 
-
-
 void loop() {
   // Haal de nieuwste wijziging op
   mqttClient.poll();
