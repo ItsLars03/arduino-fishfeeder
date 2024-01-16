@@ -223,7 +223,52 @@ void loop() {
     mqttClient.endMessage();
 
 
+// HIER VERDER DOCUMENTEREN 
+  digitalWrite(trigPin, LOW);  
+	delayMicroseconds(2);  
+	digitalWrite(trigPin, HIGH);  
+	delayMicroseconds(10);  
+	digitalWrite(trigPin, LOW);  
 
+  // DISTANCE-SENSOR
+  // Meet de pulsduur (in microseconden) van het ultrasone signaal dat wordt ontvangen op de echoPin
+  duration = pulseIn(echoPin, HIGH);
+  // De formule (duration * 0.0343) / 2 berekent de afstand in centimeters
+  distance = (duration * 0.0343) / 2;
+
+  // Zet in de console hoeveel cm voer er nog in zit.
+	Serial.print("[Distance] ");  
+	Serial.println(distance);  
+  
+  // Als de afstand groter is dan 9 zal de klep open staan
+  if (distance > 9) {
+    // Zet in de console dat de voerbak geopend is
+    Serial.println("[Voerpercentage] Voerbak geopend!");
+
+    // Disable de functies totdat de voerbak is gesloten
+    isEmpty = true;
+
+    // Als de afstand groter is dan 8, is de voerbak leeg
+  } else if (distance > 8){
+    // Zet in de console dat de voerbak leeg is
+    Serial.println("[Voerpercentage] Voer is op!");
+    // Disable de functies totdat de voerbak is bijgevuld
+    isEmpty = true;
+
+    // Zet de led aan die aangeeft dat de voerbak leeg is
+    digitalWrite(errorLed, HIGH);
+    delay(500);
+    digitalWrite(errorLed, LOW);
+    delay(500);
+  }
+
+  // Als de afstand kleiner is dan 8 is de voerbak nog vol genoeg
+  if (distance < 8) {
+    //Zet in de console dat de voerbak ok is
+    Serial.println("[Voerpercentage] OK");
+    // Enable alle functies omdat de voerbak niet leeg is
+    isEmpty = false;
+  }
 
 }
 
